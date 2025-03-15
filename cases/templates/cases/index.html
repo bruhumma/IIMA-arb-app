@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Details</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+</head>
+<body class="bg-dark text-light">
+    <div class="container mt-5">
+        <h1 class="text-center">Arbitration Case Lookup</h1>
+        <div class="mb-3">
+            <label for="caseInput" class="form-label">Enter Case Name</label>
+            <input type="text" id="caseInput" class="form-control" placeholder="e.g., Cairn">
+        </div>
+        <button id="loadCase" class="btn btn-primary">Load Case Details</button>
+
+        <div id="caseDetails" class="mt-4"></div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $("#loadCase").click(function() {
+                let phrase = $("#caseInput").val().trim();
+                if (!phrase) {
+                    alert("Please enter a case name.");
+                    return;
+                }
+
+                $.ajax({
+                    url: "/cases/lookup/",
+                    type: "POST",
+                    data: {phrase: phrase},
+                    headers: {"X-CSRFToken": "{{ csrf_token }}"},
+                    success: function(response) {
+                        if (response.error) {
+                            $("#caseDetails").html(`<p class='text-danger'>Error: ${response.error}</p>`);
+                        } else {
+                            let html = `<div class="card bg-secondary text-light p-3">
+                                <h2>Case Description</h2>
+                                <button class="btn btn-sm btn-light mb-2" data-bs-toggle="collapse" data-bs-target="#desc">Toggle Description</button>
+                                <div id="desc" class="collapse show">${response["Case Description"]}</div>
+                            </div>`;
+
+                            html += `<div class="card bg-secondary text-light p-3 mt-3">
+                                <h2>Case Timeline</h2>
+                                <ul class="list-group">`;
+                            response["Case Timeline"].forEach(event => {
+                                html += `<li class="list-group-item bg-dark text-light"><strong>${event.date}:</strong> ${event.event}</li>`;
+                            });
+                            html += `</ul></div>`;
+
+                            const fields = [
+                                "Claimant", "Respondent", "Tribunal / Court", "Governing Law", "Industry Sector",
+                                "Dispute Type", "Legal Claims", "Legal Defenses", "Start Date", "Date of Award",
+                                "Currency", "Claim Amount", "Award Amount"
+                            ];
+                            
+                            html += `<div class="card bg-secondary text-light p-3 mt-3">
+                                <h2>Case Details</h2>
+                                <ul class="list-group">`;
+                            
+                            fields.forEach(field => {
+                                if (response[field]) {
+                                    html += `<li class="list-group-item bg-dark text-light"><strong>${field}:</strong> ${response[field]}</li>`;
+                                }
+                            });
+                            
+                            html += `</ul></div>`;
+
+                            if (response["Listed Stock Entity"] && response["Listed Stock Entity"].length > 0) {
+                                html += `<div class="card bg-secondary text-light p-3 mt-3">
+                                    <h2>Listed Stock Entities</h2>
+                                    <ul class="list-group">`;
+                                response["Listed Stock Entity"].forEach(stock => {
+                                    html += `<li class="list-group-item bg-dark text-light"><strong>Ticker:</strong> ${stock.ticker}</li>`;
+                                });
+                                html += `</ul></div>`;
+                            }
+
+                            $("#caseDetails").html(html);
+                        }
+                    },
+                    error: function() {
+                        $("#caseDetails").html("<p class='text-danger'>Failed to load case details.</p>");
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
